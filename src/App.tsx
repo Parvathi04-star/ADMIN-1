@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Menu, 
-  X, 
-  Bell, 
-  Settings, 
-  Users, 
-  MapPin, 
-  Calendar, 
-  FileText, 
-  BarChart3, 
-  HelpCircle, 
-  Search, 
+import {
+  Menu,
+  X,
+  Bell,
+  Settings,
+  Users,
+  MapPin,
+  Calendar,
+  FileText,
+  BarChart3,
+  HelpCircle,
+  Search,
   Plus,
   Edit,
   Trash2,
@@ -39,6 +39,7 @@ interface User {
   lastLogin: string;
 }
 
+// 1. MODIFIED BRANCH INTERFACE
 interface Branch {
   id: string;
   name: string;
@@ -46,6 +47,7 @@ interface Branch {
   type: 'clinic' | 'hospital';
   status: 'active' | 'inactive';
   staff: number;
+  ownership: 'public' | 'private'; // <-- ADDED THIS LINE
 }
 
 interface Appointment {
@@ -113,6 +115,9 @@ function App() {
   const [branchFilterType, setBranchFilterType] = useState('');
   const [branchFilterState, setBranchFilterState] = useState('');
   const [branchFilterCity, setBranchFilterCity] = useState('');
+  // 2. ADDED NEW STATE FOR THE FILTER
+  const [branchFilterPrivate, setBranchFilterPrivate] = useState(false); // <-- ADDED THIS LINE
+
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -276,23 +281,38 @@ function App() {
     { id: '3', name: 'Emily Davis', email: 'emily@clinic.com', role: 'Admin', status: 'inactive', lastLogin: '3 days ago' },
   ];
 
-  const branches: Branch[] = [
-    { id: '1', name: 'Downtown Clinic', location: 'New York, NY', type: 'clinic', status: 'active', staff: 15 },
-    { id: '2', name: 'General Hospital', location: 'Los Angeles, CA', type: 'hospital', status: 'active', staff: 45 },
-    { id: '3', name: 'Suburban Care', location: 'Chicago, IL', type: 'clinic', status: 'inactive', staff: 8 },
-  ];
+  // 3. UPDATED MOCK DATA
+const branches: Branch[] = [
+  { id: '1', name: 'Andheri Clinic', location: 'Andheri, Mumbai', type: 'clinic', status: 'active', staff: 15, ownership: 'private' },
+  { id: '2', name: 'General Hospital', location: 'Navi Mumbai', type: 'hospital', status: 'active', staff: 45, ownership: 'public' },
+  { id: '3', name: 'Suburban Care', location: 'Govandi, Mumbai', type: 'clinic', status: 'inactive', staff: 8, ownership: 'private' },
+  { id: '4', name: 'Thane City Hospital', location: 'Thane, MH', type: 'hospital', status: 'inactive', staff: 60, ownership: 'public' },
+  { id: '5', name: 'Borivali Health Hub', location: 'Borivali, Mumbai', type: 'clinic', status: 'active', staff: 20, ownership: 'public' },
+  { id: '6', name: 'Panvel Wellness Center', location: 'Panvel, Navi Mumbai', type: 'clinic', status: 'inactive', staff: 10, ownership: 'private' },
+  { id: '7', name: 'Dombivli Multispeciality', location: 'Dombivli, MH', type: 'hospital', status: 'active', staff: 70, ownership: 'private' },
+  { id: '8', name: 'Vashi Clinic', location: 'Vashi, Navi Mumbai', type: 'clinic', status: 'active', staff: 12, ownership: 'public' },
+  { id: '9', name: 'Kalyan Metro Hospital', location: 'Kalyan, MH', type: 'hospital', status: 'inactive', staff: 80, ownership: 'private' },
+  { id: '10', name: 'Mulund Care Center', location: 'Mulund, Mumbai', type: 'clinic', status: 'active', staff: 18, ownership: 'private' }
+];
 
-  const appointments: Appointment[] = [
-    { id: '1', patient: 'John Doe', doctor: 'Dr. Smith', time: '10:00 AM', status: 'scheduled', type: 'Consultation' },
-    { id: '2', patient: 'Jane Wilson', doctor: 'Dr. Johnson', time: '2:30 PM', status: 'completed', type: 'Follow-up' },
-    { id: '3', patient: 'Bob Brown', doctor: 'Dr. Lee', time: '4:00 PM', status: 'cancelled', type: 'Surgery' },
-  ];
 
-  const logs: LogEntry[] = [
-    { id: '1', user: 'admin@clinic.com', action: 'User login', timestamp: '2024-01-15 09:30', ip: '192.168.1.1', status: 'success' },
-    { id: '2', user: 'dr.smith@clinic.com', action: 'Patient record access', timestamp: '2024-01-15 10:15', ip: '192.168.1.5', status: 'success' },
-    { id: '3', user: 'nurse@clinic.com', action: 'Failed login attempt', timestamp: '2024-01-15 11:00', ip: '192.168.1.10', status: 'failed' },
-  ];
+const appointments: Appointment[] = [
+  { id: '1', patient: 'Rohan Mehta', doctor: 'Dr. Priya Deshmukh', time: '09:30 AM', status: 'scheduled', type: 'Consultation' },
+  { id: '2', patient: 'Anjali Sharma', doctor: 'Dr. Rajesh Iyer', time: '11:00 AM', status: 'completed', type: 'Follow-up' },
+  { id: '3', patient: 'Suresh Patil', doctor: 'Dr. Neha Kulkarni', time: '01:15 PM', status: 'scheduled', type: 'Diagnostic Test' },
+  { id: '4', patient: 'Meena Nair', doctor: 'Dr. Amit Shah', time: '03:45 PM', status: 'cancelled', type: 'Surgery' },
+  { id: '5', patient: 'Vikram Joshi', doctor: 'Dr. Kavita Rao', time: '05:30 PM', status: 'completed', type: 'Consultation' }
+];
+
+
+const logs: LogEntry[] = [
+  { id: '1', user: 'admin@thanehospital.in', action: 'User login', timestamp: '2025-09-24 08:45', ip: '192.168.0.2', status: 'success' },
+  { id: '2', user: 'dr.priya@andhericlinic.in', action: 'Patient record access', timestamp: '2025-09-24 09:15', ip: '192.168.0.5', status: 'success' },
+  { id: '3', user: 'nurse.mira@nmmc.in', action: 'Failed login attempt', timestamp: '2025-09-24 09:40', ip: '192.168.0.9', status: 'failed' },
+  { id: '4', user: 'lab.tech@borivalilab.in', action: 'Lab report upload', timestamp: '2025-09-24 10:20', ip: '192.168.0.12', status: 'success' },
+  { id: '5', user: 'dr.rajesh@dombivlihospital.in', action: 'Prescription update', timestamp: '2025-09-24 11:10', ip: '192.168.0.14', status: 'success' }
+];
+
 
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: Activity },
@@ -328,7 +348,7 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
@@ -340,7 +360,7 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
@@ -352,7 +372,7 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between">
             <div>
@@ -379,7 +399,7 @@ function App() {
             </div>
             <span className="text-xs text-gray-400">2m ago</span>
           </div>
-          
+
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <div className="p-2 bg-green-100 rounded-full">
               <CheckCircle className="h-4 w-4 text-green-600" />
@@ -390,7 +410,7 @@ function App() {
             </div>
             <span className="text-xs text-gray-400">15m ago</span>
           </div>
-          
+
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <div className="p-2 bg-orange-100 rounded-full">
               <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -415,15 +435,15 @@ function App() {
           <span>Add User</span>
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-4 border-b">
           <div className="flex items-center space-x-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input 
-                type="text" 
-                placeholder="Search users..." 
+              <input
+                type="text"
+                placeholder="Search users..."
                 className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -432,7 +452,7 @@ function App() {
             </button>
           </div>
         </div>
-        
+
         <div className="divide-y divide-gray-200">
           {users.map((user) => (
             <div key={user.id} className="p-4">
@@ -449,8 +469,8 @@ function App() {
                     <div className="flex items-center space-x-2 mt-1">
                       <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-full">{user.role}</span>
                       <span className={`text-xs px-2 py-1 rounded-full ${
-                        user.status === 'active' 
-                          ? 'bg-green-100 text-green-700' 
+                        user.status === 'active'
+                          ? 'bg-green-100 text-green-700'
                           : 'bg-red-100 text-red-700'
                       }`}>
                         {user.status}
@@ -500,6 +520,7 @@ function App() {
       ...branches.map((b) => ({
         id: `branch-${b.id}`,
         name: b.name,
+        ownership: b.ownership, // <-- 4A. ADDED OWNERSHIP
         facilityType: b.type === 'hospital' ? 'General Hospital' : 'Clinic',
         city: (b.location.split(',')[0] || '').trim(),
         state: (b.location.split(',')[1] || '').trim(),
@@ -510,6 +531,7 @@ function App() {
       ...enrollments.map((e) => ({
         id: `enroll-${e.id}`,
         name: e.hospitalName,
+        ownership: 'private' as const, // Assuming all enrollments are private for now
         facilityType: e.facilityType || 'Hospital',
         city: e.address.city || '',
         state: e.address.state || '',
@@ -532,7 +554,13 @@ function App() {
       const matchesCity = branchFilterCity
         ? (it.city || '').toLowerCase() === branchFilterCity.toLowerCase()
         : true;
-      return matchesSearch && matchesType && matchesState && matchesCity;
+
+      // 4C. ADDED FILTERING LOGIC
+      const matchesPrivate = branchFilterPrivate
+        ? it.ownership === 'private'
+        : true;
+
+      return matchesSearch && matchesType && matchesState && matchesCity && matchesPrivate; // <-- AND ADDED HERE
     });
 
     return (
@@ -542,7 +570,8 @@ function App() {
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {/* 4B. UPDATED GRID AND ADDED CHECKBOX */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div className="md:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
@@ -553,6 +582,19 @@ function App() {
                 className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
+
+            <div className="flex items-center justify-center">
+                <label className="flex items-center space-x-2 cursor-pointer text-sm text-gray-700">
+                    <input
+                        type="checkbox"
+                        checked={branchFilterPrivate}
+                        onChange={(e) => setBranchFilterPrivate(e.target.checked)}
+                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span>Private Only</span>
+                </label>
+            </div>
+            
             <div>
               <select
                 value={branchFilterType}
@@ -611,8 +653,8 @@ function App() {
                   </div>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  item.status === 'active' 
-                    ? 'bg-green-100 text-green-700' 
+                  item.status === 'active'
+                    ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-700'
                 }`}>
                   {item.status}
@@ -993,7 +1035,7 @@ function App() {
           <span>Schedule</span>
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-4 border-b">
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -1011,7 +1053,7 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="divide-y divide-gray-200">
           {appointments.map((appointment) => (
             <div key={appointment.id} className="p-4">
@@ -1029,7 +1071,7 @@ function App() {
                 </div>
                 <div className="flex items-center space-x-3">
                   <span className={`text-xs px-2 py-1 rounded-full ${
-                    appointment.status === 'scheduled' 
+                    appointment.status === 'scheduled'
                       ? 'bg-blue-100 text-blue-700'
                       : appointment.status === 'completed'
                       ? 'bg-green-100 text-green-700'
@@ -1056,7 +1098,7 @@ function App() {
           <span>Export</span>
         </button>
       </div>
-      
+
       <div className="bg-white rounded-lg shadow-sm border">
         <div className="p-4 border-b">
           <div className="grid grid-cols-2 gap-4 text-center">
@@ -1070,7 +1112,7 @@ function App() {
             </div>
           </div>
         </div>
-        
+
         <div className="divide-y divide-gray-200">
           {logs.map((log) => (
             <div key={log.id} className="p-4">
@@ -1085,7 +1127,7 @@ function App() {
                   </div>
                 </div>
                 <span className={`text-xs px-2 py-1 rounded-full ${
-                  log.status === 'success' 
+                  log.status === 'success'
                     ? 'bg-green-100 text-green-700'
                     : 'bg-red-100 text-red-700'
                 }`}>
@@ -1102,7 +1144,7 @@ function App() {
   const renderAnalytics = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Analytics & Reports</h2>
-      
+
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between mb-3">
@@ -1112,7 +1154,7 @@ function App() {
           <p className="text-2xl font-bold text-gray-900">+23.5%</p>
           <p className="text-sm text-green-600">vs last month</p>
         </div>
-        
+
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-medium text-gray-900">Revenue</h3>
@@ -1161,7 +1203,7 @@ function App() {
   const renderSettings = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">System Settings</h2>
-      
+
       <div className="space-y-4">
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <h3 className="font-medium text-gray-900 mb-3">General Settings</h3>
@@ -1213,7 +1255,7 @@ function App() {
   const renderSupport = () => (
     <div className="space-y-6">
       <h2 className="text-xl font-semibold text-gray-900">Support & Help</h2>
-      
+
       <div className="space-y-4">
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <h3 className="font-medium text-gray-900 mb-3">Quick Actions</h3>
@@ -1302,7 +1344,7 @@ function App() {
             <X className="h-5 w-5 text-gray-500" />
           </button>
         </div>
-        
+
         <nav className="mt-4 px-4">
           <div className="space-y-1">
             {menuItems.map((item) => {
@@ -1350,7 +1392,7 @@ function App() {
                 {activeSection === 'dashboard' ? 'Dashboard' : menuItems.find(item => item.id === activeSection)?.name}
               </h1>
             </div>
-            
+
             <div className="flex items-center space-x-3">
               <button className="relative p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
                 <Bell className="h-5 w-5" />
