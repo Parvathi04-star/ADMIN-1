@@ -1,35 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
+
+// ==================================================================
+// These are the only two lines you need for Leaflet.
+// The 'declare const L: any;' line has been REMOVED.
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+// ==================================================================
+
 import {
-  Menu,
-  X,
-  Bell,
-  Settings,
-  Users,
-  MapPin,
-  Calendar,
-  FileText,
-  BarChart3,
-  HelpCircle,
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Eye,
-  Download,
-  Filter,
-  ChevronRight,
-  Activity,
-  Clock,
-  CheckCircle,
-  AlertTriangle,
-  TrendingUp,
-  UserPlus,
-  Upload,
-  Building
+  Menu, X, Bell, Settings, Users, MapPin, Calendar, FileText, BarChart3,
+  HelpCircle, Search, Plus, Edit, Trash2, Eye, Download, Filter,
+  ChevronRight, Activity, Clock, CheckCircle, AlertTriangle, TrendingUp,
+  UserPlus, Upload, Building
 } from 'lucide-react';
+import apiClient from './api';
 
-declare const L: any;
-
+// --- INTERFACES (No changes) ---
 interface User {
   id: string;
   name: string;
@@ -39,7 +25,6 @@ interface User {
   lastLogin: string;
 }
 
-// 1. MODIFIED BRANCH INTERFACE
 interface Branch {
   id: string;
   name: string;
@@ -47,7 +32,7 @@ interface Branch {
   type: 'clinic' | 'hospital';
   status: 'active' | 'inactive';
   staff: number;
-  ownership: 'public' | 'private'; // <-- ADDED THIS LINE
+  ownership: 'public' | 'private';
 }
 
 interface Appointment {
@@ -60,12 +45,12 @@ interface Appointment {
 }
 
 interface LogEntry {
-  id: string;
-  user: string;
-  action: string;
-  timestamp: string;
-  ip: string;
-  status: 'success' | 'failed';
+    id: string;
+    user: string;
+    action: string;
+    timestamp: string;
+    ip: string;
+    status: 'success' | 'failed';
 }
 
 interface Enrollment {
@@ -89,8 +74,19 @@ interface Enrollment {
 }
 
 function App() {
+  
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [token, setToken] = useState<string | null>(null);
+
+  // State for fetched data
+  const [users, setUsers] = useState<User[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+  
+
 
   // Enrollment state
   const [enrollmentForm, setEnrollmentForm] = useState({
@@ -108,20 +104,65 @@ function App() {
     registrationNumber: '',
     documents: [] as File[],
   });
-  const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+
   const [enrollSuccess, setEnrollSuccess] = useState<string | null>(null);
   const [docTab, setDocTab] = useState<'list' | 'preview'>('list');
   const [branchSearch, setBranchSearch] = useState('');
   const [branchFilterType, setBranchFilterType] = useState('');
   const [branchFilterState, setBranchFilterState] = useState('');
   const [branchFilterCity, setBranchFilterCity] = useState('');
-  // 2. ADDED NEW STATE FOR THE FILTER
-  const [branchFilterPrivate, setBranchFilterPrivate] = useState(false); // <-- ADDED THIS LINE
+  const [branchFilterPrivate, setBranchFilterPrivate] = useState(false);
 
   const mapRef = useRef<any>(null);
   const markerRef = useRef<any>(null);
   const [isDragging, setIsDragging] = useState(false);
   const geocodeTimeout = useRef<any>(null);
+
+  // Data fetching effects
+  useEffect(() => {
+    // Extract token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenFromUrl = urlParams.get('token');
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+      // Optionally, remove the token from the URL
+      window.history.replaceState({}, document.title, "/admin");
+    }
+  }, []);
+  
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        switch (activeSection) {
+          case 'users':
+            const usersResponse = await apiClient.get('/admin/users');
+            setUsers(usersResponse.data);
+            break;
+          case 'branches':
+            const branchesResponse = await apiClient.get('/admin/branches');
+            setBranches(branchesResponse.data);
+            break;
+          case 'enrollment':
+            const enrollmentsResponse = await apiClient.get('/admin/enrollments');
+            setEnrollments(enrollmentsResponse.data);
+            break;
+          case 'appointments':
+            const appointmentsResponse = await apiClient.get('/admin/appointments');
+            setAppointments(appointmentsResponse.data);
+            break;
+          case 'logs':
+             const logsResponse = await apiClient.get('/admin/logs');
+             setLogs(logsResponse.data);
+             break;
+        }
+      } catch (error) {
+        console.error(`Failed to fetch ${activeSection}:`, error);
+      }
+    };
+
+    fetchData();
+  }, [activeSection]);
+
 
   const osmUrl = (lat: number, lng: number, zoom = 15) => {
     const delta = 0.02;
@@ -132,49 +173,59 @@ function App() {
     return `https://www.openstreetmap.org/export/embed.html?bbox=${left}%2C${bottom}%2C${right}%2C${top}&layer=mapnik&marker=${lat}%2C${lng}`;
   };
 
-  const handleEnrollSubmit = (e: React.FormEvent) => {
+  const handleEnrollSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const id = `${Date.now()}`;
-    const latNum = parseFloat(enrollmentForm.lat);
-    const lngNum = parseFloat(enrollmentForm.lng);
-    const newEnrollment: Enrollment = {
-      id,
-      hospitalName: enrollmentForm.hospitalName.trim(),
-      facilityType: enrollmentForm.facilityType,
-      address: {
-        street: enrollmentForm.street,
-        city: enrollmentForm.city,
-        state: enrollmentForm.state,
-        zip: enrollmentForm.zip,
-        country: enrollmentForm.country,
-      },
-      lat: !isNaN(latNum) ? latNum : null,
-      lng: !isNaN(lngNum) ? lngNum : null,
-      contactEmail: enrollmentForm.contactEmail,
-      contactPhone: enrollmentForm.contactPhone,
-      registrationNumber: enrollmentForm.registrationNumber,
-      documents: (enrollmentForm.documents || []).map(f => ({ name: f.name, size: f.size })),
-      createdAt: new Date().toISOString(),
-    };
-    setEnrollments(prev => [newEnrollment, ...prev]);
-    setEnrollSuccess('Hospital enrolled successfully');
-    setEnrollmentForm({
-      hospitalName: '',
-      facilityType: '',
-      street: '',
-      city: '',
-      state: '',
-      zip: '',
-      country: '',
-      lat: '',
-      lng: '',
-      contactEmail: '',
-      contactPhone: '',
-      registrationNumber: '',
-      documents: [],
+    const formData = new FormData();
+    formData.append('hospitalName', enrollmentForm.hospitalName);
+    formData.append('facilityType', enrollmentForm.facilityType);
+    formData.append('street', enrollmentForm.street);
+    formData.append('city', enrollmentForm.city);
+    formData.append('state', enrollmentForm.state);
+    formData.append('zip', enrollmentForm.zip);
+    formData.append('country', enrollmentForm.country);
+    formData.append('lat', enrollmentForm.lat);
+    formData.append('lng', enrollmentForm.lng);
+    formData.append('contactEmail', enrollmentForm.contactEmail);
+    formData.append('contactPhone', enrollmentForm.contactPhone);
+    formData.append('registrationNumber', enrollmentForm.registrationNumber);
+    enrollmentForm.documents.forEach(doc => {
+        formData.append('documents', doc);
     });
-    setTimeout(() => setEnrollSuccess(null), 3000);
-  };
+
+    try {
+        const response = await apiClient.post('/admin/enrollments/enroll', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+
+        if (response.data.success) {
+            setEnrollSuccess('Hospital enrolled successfully');
+            // Re-fetch enrollments to update the list
+            const enrollmentsResponse = await apiClient.get('/admin/enrollments');
+            setEnrollments(enrollmentsResponse.data);
+            // Reset form
+            setEnrollmentForm({
+                hospitalName: '',
+                facilityType: '',
+                street: '',
+                city: '',
+                state: '',
+                zip: '',
+                country: '',
+                lat: '',
+                lng: '',
+                contactEmail: '',
+                contactPhone: '',
+                registrationNumber: '',
+                documents: [],
+            });
+            setTimeout(() => setEnrollSuccess(null), 3000);
+        }
+    } catch (error) {
+        console.error("Enrollment failed:", error);
+    }
+};
 
   // Initialize Leaflet map when enrollment section is active
   useEffect(() => {
@@ -273,46 +324,6 @@ function App() {
     enrollmentForm.zip,
     enrollmentForm.country,
   ]);
-
-  // Mock data
-  const users: User[] = [
-    { id: '1', name: 'Dr. Sarah Johnson', email: 'sarah@clinic.com', role: 'Doctor', status: 'active', lastLogin: '2 hours ago' },
-    { id: '2', name: 'Mike Chen', email: 'mike@clinic.com', role: 'Nurse', status: 'active', lastLogin: '1 day ago' },
-    { id: '3', name: 'Emily Davis', email: 'emily@clinic.com', role: 'Admin', status: 'inactive', lastLogin: '3 days ago' },
-  ];
-
-  // 3. UPDATED MOCK DATA
-const branches: Branch[] = [
-  { id: '1', name: 'Andheri Clinic', location: 'Andheri, Mumbai', type: 'clinic', status: 'active', staff: 15, ownership: 'private' },
-  { id: '2', name: 'General Hospital', location: 'Navi Mumbai', type: 'hospital', status: 'active', staff: 45, ownership: 'public' },
-  { id: '3', name: 'Suburban Care', location: 'Govandi, Mumbai', type: 'clinic', status: 'inactive', staff: 8, ownership: 'private' },
-  { id: '4', name: 'Thane City Hospital', location: 'Thane, MH', type: 'hospital', status: 'inactive', staff: 60, ownership: 'public' },
-  { id: '5', name: 'Borivali Health Hub', location: 'Borivali, Mumbai', type: 'clinic', status: 'active', staff: 20, ownership: 'public' },
-  { id: '6', name: 'Panvel Wellness Center', location: 'Panvel, Navi Mumbai', type: 'clinic', status: 'inactive', staff: 10, ownership: 'private' },
-  { id: '7', name: 'Dombivli Multispeciality', location: 'Dombivli, MH', type: 'hospital', status: 'active', staff: 70, ownership: 'private' },
-  { id: '8', name: 'Vashi Clinic', location: 'Vashi, Navi Mumbai', type: 'clinic', status: 'active', staff: 12, ownership: 'public' },
-  { id: '9', name: 'Kalyan Metro Hospital', location: 'Kalyan, MH', type: 'hospital', status: 'inactive', staff: 80, ownership: 'private' },
-  { id: '10', name: 'Mulund Care Center', location: 'Mulund, Mumbai', type: 'clinic', status: 'active', staff: 18, ownership: 'private' }
-];
-
-
-const appointments: Appointment[] = [
-  { id: '1', patient: 'Rohan Mehta', doctor: 'Dr. Priya Deshmukh', time: '09:30 AM', status: 'scheduled', type: 'Consultation' },
-  { id: '2', patient: 'Anjali Sharma', doctor: 'Dr. Rajesh Iyer', time: '11:00 AM', status: 'completed', type: 'Follow-up' },
-  { id: '3', patient: 'Suresh Patil', doctor: 'Dr. Neha Kulkarni', time: '01:15 PM', status: 'scheduled', type: 'Diagnostic Test' },
-  { id: '4', patient: 'Meena Nair', doctor: 'Dr. Amit Shah', time: '03:45 PM', status: 'cancelled', type: 'Surgery' },
-  { id: '5', patient: 'Vikram Joshi', doctor: 'Dr. Kavita Rao', time: '05:30 PM', status: 'completed', type: 'Consultation' }
-];
-
-
-const logs: LogEntry[] = [
-  { id: '1', user: 'admin@thanehospital.in', action: 'User login', timestamp: '2025-09-24 08:45', ip: '192.168.0.2', status: 'success' },
-  { id: '2', user: 'dr.priya@andhericlinic.in', action: 'Patient record access', timestamp: '2025-09-24 09:15', ip: '192.168.0.5', status: 'success' },
-  { id: '3', user: 'nurse.mira@nmmc.in', action: 'Failed login attempt', timestamp: '2025-09-24 09:40', ip: '192.168.0.9', status: 'failed' },
-  { id: '4', user: 'lab.tech@borivalilab.in', action: 'Lab report upload', timestamp: '2025-09-24 10:20', ip: '192.168.0.12', status: 'success' },
-  { id: '5', user: 'dr.rajesh@dombivlihospital.in', action: 'Prescription update', timestamp: '2025-09-24 11:10', ip: '192.168.0.14', status: 'success' }
-];
-
 
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: Activity },
@@ -502,25 +513,17 @@ const logs: LogEntry[] = [
 
   const renderBranches = () => {
     // Build filter options from existing branches and enrollments
-    const typeOptions = Array.from(new Set([
-      ...branches.map(b => (b.type === 'hospital' ? 'General Hospital' : 'Clinic')),
-      ...enrollments.map(e => e.facilityType).filter(Boolean),
-    ])).sort();
 
-    // For states and cities, use data from enrollments where we have structured addresses
-    const stateOptions = Array.from(new Set(
-      enrollments.map(e => e.address.state).filter(Boolean)
-    )).sort();
-    const cityOptions = Array.from(new Set(
-      enrollments.map(e => e.address.city).filter(Boolean)
-    )).sort();
 
     // Normalize data into a common list for filtering
+ // --- START: CORRECTED LOGIC ---
+
+    // 1. Combine branches and enrollments into a single list FIRST.
     const items = [
       ...branches.map((b) => ({
         id: `branch-${b.id}`,
         name: b.name,
-        ownership: b.ownership, // <-- 4A. ADDED OWNERSHIP
+        ownership: b.ownership,
         facilityType: b.type === 'hospital' ? 'General Hospital' : 'Clinic',
         city: (b.location.split(',')[0] || '').trim(),
         state: (b.location.split(',')[1] || '').trim(),
@@ -531,7 +534,7 @@ const logs: LogEntry[] = [
       ...enrollments.map((e) => ({
         id: `enroll-${e.id}`,
         name: e.hospitalName,
-        ownership: 'private' as const, // Assuming all enrollments are private for now
+        ownership: 'private' as const,
         facilityType: e.facilityType || 'Hospital',
         city: e.address.city || '',
         state: e.address.state || '',
@@ -541,6 +544,12 @@ const logs: LogEntry[] = [
       })),
     ];
 
+    // 2. NOW, create the dropdown options from the complete 'items' list.
+    const typeOptions = Array.from(new Set(items.map(it => it.facilityType).filter(Boolean))).sort();
+    const stateOptions = Array.from(new Set(items.map(it => it.state).filter(Boolean))).sort();
+    const cityOptions = Array.from(new Set(items.map(it => it.city).filter(Boolean))).sort();
+
+    // --- END: CORRECTED LOGIC ---
     const filtered = items.filter((it) => {
       const matchesSearch = branchSearch
         ? it.name.toLowerCase().includes(branchSearch.toLowerCase())
@@ -555,12 +564,11 @@ const logs: LogEntry[] = [
         ? (it.city || '').toLowerCase() === branchFilterCity.toLowerCase()
         : true;
 
-      // 4C. ADDED FILTERING LOGIC
       const matchesPrivate = branchFilterPrivate
         ? it.ownership === 'private'
         : true;
 
-      return matchesSearch && matchesType && matchesState && matchesCity && matchesPrivate; // <-- AND ADDED HERE
+      return matchesSearch && matchesType && matchesState && matchesCity && matchesPrivate;
     });
 
     return (
@@ -570,7 +578,6 @@ const logs: LogEntry[] = [
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border p-4">
-          {/* 4B. UPDATED GRID AND ADDED CHECKBOX */}
           <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
             <div className="md:col-span-2 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1316,6 +1323,7 @@ const logs: LogEntry[] = [
       case 'users': return renderUsers();
       case 'branches': return renderBranches();
       case 'enrollment': return renderEnrollment();
+      case 'appointments': return renderAppointments(); 
       case 'logs': return renderLogs();
       case 'analytics': return renderAnalytics();
       case 'settings': return renderSettings();
