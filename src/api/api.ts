@@ -1,7 +1,7 @@
 import axios, { InternalAxiosRequestConfig } from "axios";
 
 const api = axios.create({
-  baseURL: "http://localhost:8080", // Your backend server's URL
+  baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080", // Your backend server's URL
 });
 
 // This interceptor now uses the 'InternalAxiosRequestConfig' type from axios
